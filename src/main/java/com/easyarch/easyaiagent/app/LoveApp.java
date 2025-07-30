@@ -1,6 +1,7 @@
 package com.easyarch.easyaiagent.app;
 
 import com.easyarch.easyaiagent.advisor.MyAdvisor;
+import com.easyarch.easyaiagent.chatmemory.FileBaseChatMemory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -25,10 +26,14 @@ public class LoveApp {
 
     /**
      * 初始化
+     *
      * @param chatClientBuilder
      */
     public LoveApp(ChatClient.Builder chatClientBuilder) {
-        ChatMemory chatMemory = new InMemoryChatMemory();
+        //持久化到内存
+//        ChatMemory chatMemory = new InMemoryChatMemory();
+        //持久化到文件
+        ChatMemory chatMemory = new FileBaseChatMemory("src/main/resources/chat-memory");
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory),
                         new MyAdvisor()
@@ -37,6 +42,7 @@ public class LoveApp {
 
     /**
      * simple function
+     *
      * @param userPrompt
      * @param chatId
      * @return
@@ -45,16 +51,19 @@ public class LoveApp {
         ChatResponse chatResponse = chatClient.prompt()
                 .user(userPrompt)
                 .advisors(advisor -> advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY,1))
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 1))
 
                 .call()
                 .chatResponse();
         return chatResponse.getResult().getOutput().getText();
     }
-    record LoveReport(String title, List<String> suggestions) { }
+
+    record LoveReport(String title, List<String> suggestions) {
+    }
 
     /**
      * 使用结构化输出
+     *
      * @param message
      * @param chatId
      * @return

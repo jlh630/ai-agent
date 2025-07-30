@@ -26,6 +26,8 @@ class LoveAppTest {
     void testDoChatWriterReport(){
         String uid = UUID.randomUUID().toString();
         System.out.println(loveApp.doChatWriterReport("你好我是xx，我希望能够找到另一半有什么的建议", uid));
+        System.out.println(loveApp.doChatWriterReport("你好我是xx，我希望能够找到另一半有什么的建议", uid));
+        System.out.println(loveApp.doChatWriterReport("你好我是xx，我希望能够找到另一半有什么的建议", uid));
 
     }
 }
