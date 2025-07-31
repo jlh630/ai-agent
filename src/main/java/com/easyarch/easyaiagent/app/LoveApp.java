@@ -2,12 +2,17 @@ package com.easyarch.easyaiagent.app;
 
 import com.easyarch.easyaiagent.advisor.MyAdvisor;
 import com.easyarch.easyaiagent.chatmemory.FileBaseChatMemory;
+
+
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+
+import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 
@@ -24,6 +29,9 @@ public class LoveApp {
 
     public ChatClient chatClient;
 
+    @Resource
+    private VectorStore loveAppVectorStore;
+
     /**
      * 初始化
      *
@@ -35,7 +43,8 @@ public class LoveApp {
         //持久化到文件
         ChatMemory chatMemory = new FileBaseChatMemory("src/main/resources/chat-memory");
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory),
+                .defaultAdvisors(
+                        new MessageChatMemoryAdvisor(chatMemory),
                         new MyAdvisor()
                 ).build();
     }
@@ -51,8 +60,7 @@ public class LoveApp {
         ChatResponse chatResponse = chatClient.prompt()
                 .user(userPrompt)
                 .advisors(advisor -> advisor.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 1))
-
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
                 .call()
                 .chatResponse();
         return chatResponse.getResult().getOutput().getText();
@@ -62,7 +70,7 @@ public class LoveApp {
     }
 
     /**
-     * 使用结构化输出
+     * 报告功能(使用结构化输出)
      *
      * @param message
      * @param chatId
@@ -77,7 +85,30 @@ public class LoveApp {
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
                 .call()
                 .entity(LoveReport.class);
-//        log.info("loveReport: {}", loveReport);
+        log.info("loveReport: {}", loveReport);
         return loveReport;
     }
+
+
+    /**
+     * 使用rag的方式进行检索
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String doChatWithRag(String message, String chatId) {
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+
+                .advisors(new QuestionAnswerAdvisor(loveAppVectorStore))
+                .call()
+                .chatResponse();
+        String content = chatResponse.getResult().getOutput().getText();
+        log.info("content: {}", content);
+        return content;
+    }
+
 }
